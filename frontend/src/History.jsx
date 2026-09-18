@@ -5,8 +5,7 @@ function History() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const API_BASE_URL = "http://localhost:5000/api/history";
-
+  const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/history`;
   // ==========================================
   // FETCH HISTORY
   // ==========================================
