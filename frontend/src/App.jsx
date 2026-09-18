@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import History from "./History";
 import Login from "./Login";
+const API_URL = import.meta.env.VITE_API_URL;
 
 function App() {
   // ==============================
@@ -245,23 +246,18 @@ function App() {
     wikipediaUrl
   ) => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/history",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            objectName,
-            category,
-            description,
-            confidence,
-            image,
-            wikipediaUrl,
-          }),
-        }
-      );
+     const response = await fetch(
+  `${API_URL}/api/history`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      // tumhara existing data
+    }),
+  }
+);
 
       const data = await response.json();
 
