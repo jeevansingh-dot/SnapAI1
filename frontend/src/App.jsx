@@ -333,13 +333,23 @@ try {
   // GEMINI AI
   // ==========================
 
-  const response = await fetch(
-    `${API_URL}/api/identify`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
+ const response = await fetch(
+  `${API_URL}/api/history`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      objectName,
+      category,
+      description,
+      confidence,
+      image,
+      wikipediaUrl,
+    }),
+  }
+);
 
   const data = await response.json();
 
