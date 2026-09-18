@@ -304,8 +304,8 @@ function App() {
       // GEMINI AI
       // ==========================
 
-      const response = await fetch(
-        "http://localhost:5000/api/identify",
+     const response = await fetch(
+  `${API_URL}/api/identify`,
         {
           method: "POST",
           body: formData,
@@ -387,10 +387,10 @@ function App() {
           setInfoLoading(true);
 
           const infoResponse = await fetch(
-            `http://localhost:5000/api/info?name=${encodeURIComponent(
-              objectName
-            )}`
-          );
+  `${API_URL}/api/info?name=${encodeURIComponent(
+    objectName
+  )}`
+);
 
           const infoData = await infoResponse.json();
 
