@@ -42,6 +42,25 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 // FIXED MODEL NAME
 // server.js
 const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+async function generateWithRetry(contents) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await model.generateContent(contents);
+    } catch (error) {
+      lastError = error;
+
+      console.log(`Gemini attempt ${attempt} failed:`, error.message);
+
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
+  }
+
+  throw lastError;
+}
 /* ========================= AI IDENTIFICATION ========================= */
 app.post("/api/identify", upload.single("image"), async (req, res) => {
   try {
