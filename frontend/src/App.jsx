@@ -262,9 +262,14 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        setMessage(data.message || "Identification failed.");
-        return;
-      }
+  const errorData = await response.json().catch(() => ({}));
+
+  throw new Error(
+    errorData.error ||
+    errorData.message ||
+    "AI identification failed"
+  );
+}
 
       setResult(data.result);
 
