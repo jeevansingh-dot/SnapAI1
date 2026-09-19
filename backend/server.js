@@ -102,15 +102,15 @@ Important:
 - Do not add extra text outside the required format.
 `;
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64Image,
-          mimeType: mimeType,
-        },
-      },
-      prompt,
-    ]);
+    const result = await generateWithRetry([
+  {
+    inlineData: {
+      data: base64Image,
+      mimeType: mimeType,
+    },
+  },
+  prompt,
+]);
 
     const response = await result.response;
     const text = response.text();
