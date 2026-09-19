@@ -41,7 +41,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 // FIXED MODEL NAME
 // server.js
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 /* ========================= AI IDENTIFICATION ========================= */
 app.post("/api/identify", upload.single("image"), async (req, res) => {
   try {
