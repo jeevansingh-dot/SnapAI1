@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
-
+import { useEffect, useState } from "react";
+  const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/history`;
 function History() {
   const [historyItems, setHistoryItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/history`;
+  //const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/history`;
   // ==========================================
   // FETCH HISTORY
   // ==========================================
