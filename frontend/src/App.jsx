@@ -6,96 +6,85 @@ import Login from "./Login";
 const API_URL = import.meta.env.VITE_API_URL;
 
 function App() {
-  // ==============================
-  // USER AUTHENTICATION
-  // ==============================
+  // =========================
+  // AUTH
+  // =========================
   const [user, setUser] = useState(null);
 
-  // ==============================
-  // IMAGE STATES
-  // ==============================
-  const [image, setImage] = useState(null);
-  const [file, setFile] = useState(null);
-
-  // ==============================
-  // RESULT STATES
-  // ==============================
-  const [result, setResult] = useState("");
-  const [info, setInfo] = useState(null);
-
-  // ==============================
-  // LOADING STATES
-  // ==============================
-  const [loading, setLoading] = useState(false);
-  const [infoLoading, setInfoLoading] = useState(false);
-
-  // ==============================
-  // MESSAGE
-  // ==============================
-  const [message, setMessage] = useState("");
-
-  // ==============================
-  // CAMERA
-  // ==============================
-  const [cameraOpen, setCameraOpen] = useState(false);
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-
-  // ==============================
-  // CHECK LOGIN
-  // ==============================
   useEffect(() => {
     const savedUser = localStorage.getItem("snapidUser");
+
     if (savedUser) {
       try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
+        setUser(JSON.parse(savedUser));
       } catch (error) {
-        console.error("Saved user error:", error);
+        console.error("Invalid saved user:", error);
         localStorage.removeItem("snapidUser");
       }
     }
   }, []);
 
-  // ==============================
-  // LOGIN SUCCESS
-  // ==============================
-  const handleLogin = (loggedInUser) => {
-    localStorage.setItem("snapidUser", JSON.stringify(loggedInUser));
-    setUser(loggedInUser);
+  const handleLogin = (userData) => {
+    localStorage.setItem("snapidUser", JSON.stringify(userData));
+    setUser(userData);
   };
 
-  // ==============================
-  // LOGOUT
-  // ==============================
   const handleLogout = () => {
     localStorage.removeItem("snapidUser");
     setUser(null);
-    setImage(null);
-    setFile(null);
-    setResult("");
-    setInfo(null);
-    setMessage("");
-    closeCamera();
   };
 
-  // ==============================
-  // IMAGE UPLOAD
-  // ==============================
-  const handleImageChange = (event) => {
-    const selectedFile = event.target.files[0];
+  // =========================
+  // IMAGE STATES
+  // =========================
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState("");
+  const [result, setResult] = useState("");
+  const [info, setInfo] = useState(null);
+
+  const [loading, setLoading] = useState(false);
+  const [infoLoading, setInfoLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  // =========================
+  // CAMERA
+  // =========================
+  const [cameraOpen, setCameraOpen] = useState(false);
+
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  // =========================
+  // API URL CHECK
+  // =========================
+  useEffect(() => {
+    console.log("SnapID API URL:", API_URL);
+
+    if (!API_URL) {
+      console.error("VITE_API_URL is not configured.");
+      setMessage("Backend URL is not configured.");
+    }
+  }, []);
+
+  // =========================
+  // UPLOAD IMAGE
+  // =========================
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files?.[0];
+
     if (!selectedFile) return;
 
     setFile(selectedFile);
-    setImage(URL.createObjectURL(selectedFile));
+    setPreview(URL.createObjectURL(selectedFile));
+
     setResult("");
     setInfo(null);
     setMessage("");
   };
 
-  // ==============================
+  // =========================
   // OPEN CAMERA
-  // ==============================
+  // =========================
   const openCamera = async () => {
     try {
       setMessage("");
@@ -106,11 +95,14 @@ function App() {
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: {
+          facingMode: "environment",
+        },
         audio: false,
       });
 
       streamRef.current = stream;
+
       setCameraOpen(true);
 
       setTimeout(() => {
@@ -120,55 +112,55 @@ function App() {
       }, 100);
     } catch (error) {
       console.error("Camera Error:", error);
-      setMessage("Camera access denied or camera is not available.");
+      setMessage("Unable to access camera. Please allow camera permission.");
     }
   };
 
-  // ==============================
-  // CLOSE CAMERA
-  // ==============================
-  const closeCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    setCameraOpen(false);
-  };
-
-  // ==============================
+  // =========================
   // CAPTURE PHOTO
-  // ==============================
+  // =========================
   const capturePhoto = () => {
+    if (!videoRef.current) return;
+
     const video = videoRef.current;
-    if (!video) return;
 
     const canvas = document.createElement("canvas");
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     const context = canvas.getContext("2d");
-    if (!context) return;
 
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.drawImage(
+      video,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
     canvas.toBlob(
       (blob) => {
-        if (!blob) return;
+        if (!blob) {
+          setMessage("Unable to capture photo.");
+          return;
+        }
 
-        const capturedFile = new File([blob], "snapid-photo.jpg", {
-          type: "image/jpeg",
-        });
+        const capturedFile = new File(
+          [blob],
+          "camera-photo.jpg",
+          {
+            type: "image/jpeg",
+          }
+        );
 
         setFile(capturedFile);
-        setImage(URL.createObjectURL(blob));
+        setPreview(URL.createObjectURL(capturedFile));
+
         setResult("");
         setInfo(null);
         setMessage("");
+
         closeCamera();
       },
       "image/jpeg",
@@ -176,418 +168,665 @@ function App() {
     );
   };
 
-  // ==============================
-  // STOP CAMERA ON UNMOUNT
-  // ==============================
+  // =========================
+  // CLOSE CAMERA
+  // =========================
+  const closeCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
+
+      streamRef.current = null;
+    }
+
+    setCameraOpen(false);
+  };
+
+  // =========================
+  // CAMERA CLEANUP
+  // =========================
   useEffect(() => {
     return () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current.getTracks().forEach((track) => {
+          track.stop();
+        });
       }
     };
   }, []);
 
-  // ==============================
-  // SAVE HISTORY
-  // ==============================
-  const saveHistory = async (
-    objectName,
-    category,
-    description,
-    confidence,
-    image,
-    wikipediaUrl
-  ) => {
-    try {
-      const response = await fetch(`${API_URL}/api/history`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          objectName,
-          category,
-          description,
-          confidence,
-          image,
-          wikipediaUrl,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error("History Save Failed:", data.message);
-        return;
-      }
-
-      console.log("History saved successfully:", data.history);
-    } catch (error) {
-      console.error("History Error:", error);
-    }
-  };
-
-  // ==============================
-  // IDENTIFY OBJECT
-  // ==============================
-  const handleIdentify = async () => {
-    if (!file) {
-      setMessage("Please select or capture an image first.");
-      return;
-    }
-
-    if (!API_URL) {
-      setMessage("API URL is not configured.");
-      console.error("VITE_API_URL is missing.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("image", file);
-
-    try {
-      setLoading(true);
-      setMessage("");
-      setResult("");
-      setInfo(null);
-
-      // ==========================
-      // GEMINI AI
-      // ==========================
-      const response = await fetch(`${API_URL}/api/identify`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-  const errorData = await response.json().catch(() => ({}));
-
-  throw new Error(
-    errorData.error ||
-    errorData.message ||
-    "AI identification failed"
-  );
-}
-
-      setResult(data.result);
-
-      // ==========================
-      // PARSE AI RESULT
-      // ==========================
-      const lines = data.result.split("\n");
-
-      let objectName = "";
-      let category = "";
-      let description = "";
-      let confidence = 0;
-
-      lines.forEach((line) => {
-        const lowerLine = line.toLowerCase().trim();
-
-        if (lowerLine.startsWith("name:")) {
-          objectName = line.substring(line.indexOf(":") + 1).trim();
-        }
-
-        if (lowerLine.startsWith("category:")) {
-          category = line.substring(line.indexOf(":") + 1).trim();
-        }
-
-        if (lowerLine.startsWith("description:")) {
-          description = line.substring(line.indexOf(":") + 1).trim();
-        }
-
-        if (lowerLine.startsWith("confidence:")) {
-          confidence = parseFloat(
-            line.substring(line.indexOf(":") + 1).trim()
-          );
-        }
-      });
-
-      console.log("Parsed AI Data:", {
-        objectName,
-        category,
-        description,
-        confidence,
-      });
-
-      // ==========================
-      // WIKIPEDIA
-      // ==========================
-      let wikipediaData = null;
-
-      if (objectName && objectName.toLowerCase() !== "unknown") {
-        try {
-          setInfoLoading(true);
-
-          const infoResponse = await fetch(
-            `${API_URL}/api/info?name=${encodeURIComponent(objectName)}`
-          );
-
-          const infoData = await infoResponse.json();
-
-          if (infoResponse.ok) {
-            setInfo(infoData);
-            wikipediaData = infoData;
-          } else {
-            console.log("Wikipedia information not found.");
-          }
-        } catch (error) {
-          console.error("Wikipedia Error:", error);
-        } finally {
-          setInfoLoading(false);
-        }
-      }
-
-      // ==========================
-      // SAVE HISTORY
-      // ==========================
-      if (
-        objectName &&
-        category &&
-        objectName.toLowerCase() !== "unknown"
-      ) {
-        await saveHistory(
-          objectName,
-          category,
-          description,
-          confidence,
-          wikipediaData?.image || "",
-          wikipediaData?.wikipediaUrl || ""
-        );
-      }
-    } catch (error) {
-      console.error("Identification Error:", error);
-      setMessage("Unable to connect to the backend server.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ==============================
+  // =========================
   // REMOVE IMAGE
-  // ==============================
-  const handleRemoveImage = () => {
-    setImage(null);
+  // =========================
+  const removeImage = () => {
     setFile(null);
+    setPreview("");
     setResult("");
     setInfo(null);
     setMessage("");
   };
 
-  // ==============================
-  // SHOW LOGIN IF NOT LOGGED IN
-  // ==============================
+  // =========================
+  // SAVE HISTORY
+  // =========================
+  const saveHistory = async ({
+    objectName,
+    category,
+    description,
+    confidence,
+    image,
+    wikipediaUrl,
+  }) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/history`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            objectName,
+            category,
+            description,
+            confidence,
+            image,
+            wikipediaUrl,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("History Save Failed:", data);
+
+        throw new Error(
+          data.error ||
+            data.message ||
+            "Failed to save history"
+        );
+      }
+
+      console.log("History Saved:", data);
+
+      window.dispatchEvent(
+        new Event("historyUpdated")
+      );
+    } catch (error) {
+      console.error("History Error:", error);
+    }
+  };
+
+  // =========================
+  // IDENTIFY OBJECT
+  // =========================
+  const handleIdentify = async () => {
+    if (!file) {
+      setMessage("Please upload or capture an image first.");
+      return;
+    }
+
+    if (!API_URL) {
+      setMessage("Backend URL is missing.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setInfoLoading(false);
+
+      setMessage("");
+      setResult("");
+      setInfo(null);
+
+      // -------------------------
+      // CREATE FORM DATA
+      // -------------------------
+      const formData = new FormData();
+
+      formData.append("image", file);
+
+      console.log("Sending image to:", `${API_URL}/api/identify`);
+
+      // -------------------------
+      // CALL AI API
+      // -------------------------
+      const response = await fetch(
+        `${API_URL}/api/identify`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      // IMPORTANT:
+      // response.json() ONLY ONCE
+      const data = await response.json();
+
+      console.log("Identify API Response:", data);
+
+      // -------------------------
+      // HANDLE BACKEND ERROR
+      // -------------------------
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            data.message ||
+            `AI identification failed (${response.status})`
+        );
+      }
+
+      if (!data.success) {
+        throw new Error(
+          data.error ||
+            data.message ||
+            "AI identification failed"
+        );
+      }
+
+      // -------------------------
+      // AI RESULT
+      // -------------------------
+      const aiResult = data.result || "";
+
+      setResult(aiResult);
+
+      // -------------------------
+      // PARSE AI RESULT
+      // -------------------------
+      let category = "Unknown";
+      let objectName = "Unknown";
+      let description = "";
+      let confidence = 0;
+
+      const categoryMatch = aiResult.match(
+        /Category:\s*(.+)/i
+      );
+
+      const nameMatch = aiResult.match(
+        /Name:\s*(.+)/i
+      );
+
+      const descriptionMatch = aiResult.match(
+        /Description:\s*(.+)/i
+      );
+
+      const confidenceMatch = aiResult.match(
+        /Confidence:\s*(0?\.\d+|1(?:\.0)?|\d+(?:\.\d+)?)/i
+      );
+
+      if (categoryMatch) {
+        category = categoryMatch[1].trim();
+      }
+
+      if (nameMatch) {
+        objectName = nameMatch[1].trim();
+      }
+
+      if (descriptionMatch) {
+        description = descriptionMatch[1].trim();
+      }
+
+      if (confidenceMatch) {
+        let confidenceValue = parseFloat(
+          confidenceMatch[1]
+        );
+
+        // If AI returns 98 instead of 0.98
+        if (confidenceValue > 1) {
+          confidenceValue =
+            confidenceValue / 100;
+        }
+
+        confidence = confidenceValue;
+      }
+
+      console.log("Parsed AI Result:", {
+        category,
+        objectName,
+        description,
+        confidence,
+      });
+
+      // =========================
+      // WIKIPEDIA INFO
+      // =========================
+      setInfoLoading(true);
+
+      let wikipediaImage = "";
+      let wikipediaUrl = "";
+
+      try {
+        const infoResponse = await fetch(
+          `${API_URL}/api/info?name=${encodeURIComponent(
+            objectName
+          )}`
+        );
+
+        const infoData = await infoResponse.json();
+
+        console.log("Wikipedia API Response:", infoData);
+
+        if (infoResponse.ok && infoData.success) {
+          setInfo(infoData);
+
+          wikipediaImage =
+            infoData.image || "";
+
+          wikipediaUrl =
+            infoData.wikipediaUrl || "";
+        }
+      } catch (infoError) {
+        console.error(
+          "Wikipedia Info Error:",
+          infoError
+        );
+      } finally {
+        setInfoLoading(false);
+      }
+
+      // =========================
+      // SAVE HISTORY
+      // =========================
+      await saveHistory({
+        objectName,
+        category,
+        description,
+        confidence,
+        image:
+          wikipediaImage ||
+          data.image ||
+          preview ||
+          "",
+        wikipediaUrl,
+      });
+
+      setMessage(
+        "Object identified successfully!"
+      );
+    } catch (error) {
+      console.error(
+        "Identification Error:",
+        error
+      );
+
+      // IMPORTANT:
+      // Actual backend error show karega
+      setMessage(
+        error.message ||
+          "AI identification failed"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =========================
+  // LOGIN SCREEN
+  // =========================
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
 
-  // ==============================
+  // =========================
   // MAIN APP
-  // ==============================
+  // =========================
   return (
     <div className="app">
-      <div className="container">
-        {/* HEADER */}
-        <header className="header">
-          <div className="logo">SnapID</div>
-          <h1>Ek Photo, Poori Pehchaan</h1>
-          <p className="main-description">
-            Identify forts, plants and vehicles using AI
-          </p>
-          <p className="subtitle">
-            Upload or capture a photo and let SnapID recognize it for you.
-          </p>
 
-          {/* USER SECTION */}
-          <div className="user-area">
-            <span className="user-name">Hi, {user?.name}</span>
-            <button
-              type="button"
-              className="logout-btn"
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
-          </div>
-        </header>
+      {/* =========================
+          HEADER
+      ========================= */}
+      <header className="header">
 
-        {/* UPLOAD SECTION */}
-        <div className="upload-section">
-          <div className="upload-icon">📸</div>
-          <h2>Identify Anything</h2>
-          <p className="upload-description">
-            Upload an image or take a photo to get instant AI recognition.
-          </p>
+        <div className="brand">
 
-          <div className="upload-buttons">
-            <label htmlFor="imageUpload" className="upload-btn">
-              📁 Upload Photo
-            </label>
-            <input
-              id="imageUpload"
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              hidden
-            />
-
-            <button type="button" className="camera-btn" onClick={openCamera}>
-              📷 Take Photo
-            </button>
+          <div className="brand-icon">
+            🔍
           </div>
 
-          <p className="upload-hint">Supported formats: JPG, PNG, WEBP</p>
+          <div>
+            <h1>SnapID</h1>
+
+            <p>
+              Ek Photo, Poori Pehchaan
+            </p>
+          </div>
+
         </div>
 
-        {/* CAMERA */}
-        {cameraOpen && (
-          <div className="camera-overlay">
-            <div className="camera-modal">
-              <div className="camera-header">
-                <h2>📷 Take Photo</h2>
-                <button
-                  type="button"
-                  className="camera-close"
-                  onClick={closeCamera}
-                >
-                  ✕
-                </button>
-              </div>
+        <div className="header-user">
 
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="camera-video"
-              />
+          <span>
+            Hi, {user?.name || "User"}
+          </span>
 
-              <div className="camera-controls">
-                <button
-                  type="button"
-                  className="capture-btn"
-                  onClick={capturePhoto}
-                >
-                  📸 Capture
-                </button>
+          <button
+            className="logout-btn"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
 
-                <button
-                  type="button"
-                  className="cancel-camera-btn"
-                  onClick={closeCamera}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+        </div>
+
+      </header>
+
+      {/* =========================
+          HERO
+      ========================= */}
+      <section className="hero">
+
+        <div className="hero-content">
+
+          <span className="hero-badge">
+            ✨ AI Powered Recognition
+          </span>
+
+          <h2>
+            Identify Anything
+            <br />
+            From One Photo
+          </h2>
+
+          <p>
+            Upload or capture a photo and
+            let SnapID identify forts,
+            plants, vehicles and more.
+          </p>
+
+        </div>
+
+      </section>
+
+      {/* =========================
+          UPLOAD SECTION
+      ========================= */}
+      <main className="main-container">
+
+        <section className="upload-card">
+
+          <div className="section-heading">
+
+            <h2>
+              📸 Identify an Object
+            </h2>
+
+            <p>
+              Upload an image or use your camera
+            </p>
+
           </div>
-        )}
 
-        {/* IMAGE PREVIEW */}
-        {image && (
-          <div className="preview">
-            <div className="preview-header">
-              <h2>Selected Image</h2>
+          {!preview && (
+            <div className="upload-actions">
+
+              <label className="upload-btn">
+
+                📁 Upload Photo
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  hidden
+                />
+
+              </label>
+
               <button
-                type="button"
-                className="remove-btn"
-                onClick={handleRemoveImage}
+                className="camera-btn"
+                onClick={openCamera}
               >
-                ✕ Remove
+                📷 Open Camera
               </button>
+
             </div>
+          )}
 
-            <img src={image} alt="Selected" />
+          {/* =========================
+              CAMERA MODAL
+          ========================= */}
+          {cameraOpen && (
+            <div className="camera-overlay">
 
-            <button
-              type="button"
-              className="identify-btn"
-              onClick={handleIdentify}
-              disabled={loading}
-            >
-              {loading ? "🤖 Identifying..." : "🔍 Identify Object"}
-            </button>
-          </div>
-        )}
+              <div className="camera-modal">
 
-        {/* MESSAGE */}
-        {message && <div className="message">⚠️ {message}</div>}
+                <div className="camera-header">
 
-        {/* AI RESULT */}
-        {result && (
-          <div className="result">
-            <h2>🤖 Recognition Result</h2>
-            <div className="result-card">
-              {result
-                .split("\n")
-                .filter((line) => line.trim() !== "")
-                .map((line, index) => {
-                  const [label, ...value] = line.split(":");
-                  return (
-                    <div className="result-row" key={index}>
-                      <strong>{label}:</strong>
-                      <span>{value.join(":").trim()}</span>
-                    </div>
-                  );
-                })}
+                  <h3>
+                    Take a Photo
+                  </h3>
+
+                  <button
+                    onClick={closeCamera}
+                    className="camera-close"
+                  >
+                    ✕
+                  </button>
+
+                </div>
+
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="camera-video"
+                />
+
+                <div className="camera-controls">
+
+                  <button
+                    className="capture-btn"
+                    onClick={capturePhoto}
+                  >
+                    📸 Capture
+                  </button>
+
+                  <button
+                    className="cancel-camera-btn"
+                    onClick={closeCamera}
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </div>
+
             </div>
-          </div>
-        )}
+          )}
 
-        {/* INFO LOADING */}
-        {infoLoading && (
-          <div className="info-loading">
-            <div className="loader"></div>
-            <p>Fetching detailed information...</p>
-          </div>
-        )}
+          {/* =========================
+              IMAGE PREVIEW
+          ========================= */}
+          {preview && (
+            <div className="preview-section">
 
-        {/* WIKIPEDIA INFO */}
-        {info && (
-          <div className="info-card">
-            <div className="info-title">
-              <span>📚</span>
-              <h2>About {info.name}</h2>
-            </div>
+              <div className="preview-header">
 
-            {info.image && (
-              <img
-                src={info.image}
-                alt={info.name}
-                className="info-image"
-              />
-            )}
+                <h3>
+                  Selected Image
+                </h3>
 
-            {info.description && (
-              <p className="info-description">{info.description}</p>
-            )}
+                <button
+                  className="remove-btn"
+                  onClick={removeImage}
+                >
+                  ✕ Remove
+                </button>
 
-            {info.extract && (
-              <p className="info-extract">{info.extract}</p>
-            )}
+              </div>
 
-            {info.wikipediaUrl && (
-              <a
-                href={info.wikipediaUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="wiki-btn"
+              <div className="preview-wrapper">
+
+                <img
+                  src={preview}
+                  alt="Selected"
+                  className="preview-image"
+                />
+
+              </div>
+
+              <button
+                className="identify-btn"
+                onClick={handleIdentify}
+                disabled={loading}
               >
-                Read More on Wikipedia →
-              </a>
-            )}
-          </div>
+                {loading
+                  ? "🔄 Identifying..."
+                  : "✨ Identify Object"}
+              </button>
+
+            </div>
+          )}
+
+          {/* =========================
+              MESSAGE
+          ========================= */}
+          {message && (
+            <div className="message-box">
+              {message}
+            </div>
+          )}
+
+        </section>
+
+        {/* =========================
+            AI RESULT
+        ========================= */}
+        {result && (
+          <section className="result-card">
+
+            <div className="section-heading">
+
+              <span className="result-label">
+                AI RESULT
+              </span>
+
+              <h2>
+                🔎 Recognition Result
+              </h2>
+
+            </div>
+
+            <div className="result-content">
+
+              <pre className="result-text">
+                {result}
+              </pre>
+
+            </div>
+
+          </section>
         )}
 
-        {/* HISTORY */}
-        <History />
+        {/* =========================
+            WIKIPEDIA INFO
+        ========================= */}
+        {infoLoading && (
+          <section className="info-card">
 
-        {/* FOOTER */}
-        <footer>
-          <p>Powered by AI • SnapID</p>
-        </footer>
-      </div>
+            <div className="loading-info">
+              🔄 Fetching detailed information...
+            </div>
+
+          </section>
+        )}
+
+        {info && (
+          <section className="info-card">
+
+            <div className="section-heading">
+
+              <span className="result-label">
+                DETAILED INFORMATION
+              </span>
+
+              <h2>
+                📚 About {info.name}
+              </h2>
+
+            </div>
+
+            <div className="info-content">
+
+              {info.image && (
+                <div className="info-image-container">
+
+                  <img
+                    src={info.image}
+                    alt={info.name}
+                    className="info-image"
+                  />
+
+                </div>
+              )}
+
+              <div className="info-details">
+
+                <h3>
+                  {info.name}
+                </h3>
+
+                <p>
+                  {info.description ||
+                    info.extract ||
+                    "No detailed information available."}
+                </p>
+
+                {info.wikipediaUrl && (
+                  <a
+                    href={info.wikipediaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="wiki-btn"
+                  >
+                    📖 Read on Wikipedia
+                  </a>
+                )}
+
+              </div>
+
+            </div>
+
+          </section>
+        )}
+
+        {/* =========================
+            HISTORY
+        ========================= */}
+        <section className="history-section">
+
+          <History />
+
+        </section>
+
+      </main>
+
+      {/* =========================
+          FOOTER
+      ========================= */}
+      <footer className="footer">
+
+        <div>
+          <strong>SnapID</strong>
+          <span>
+            {" "}— Ek Photo, Poori Pehchaan
+          </span>
+        </div>
+
+        <p>
+          AI-powered object recognition
+        </p>
+
+      </footer>
+
     </div>
   );
 }
